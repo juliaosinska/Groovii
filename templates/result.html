@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groovii</title>
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='music_note.svg') }}">
+</head>
+<body>
+    <div class="container result-container">
+        <h2>Your playlist is ready!</h2>
+        <h3 class="playlist-title">{{ playlist_name }}</h3>
+        <a href="{{ playlist_url }}" class="btn" target="_blank" style="display:block;margin-bottom:24px;">Open Playlist in Spotify</a>
+        <div class="spotify-player">
+            <iframe src="https://open.spotify.com/embed/playlist/{{ playlist_id }}" width="100%" height="500" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
+        </div>
+        <ul class="playlist-list">
+            <!-- Playlist tracks will be injected here -->
+        </ul>
+        <div class="error" style="display: none;">
+            <!-- Error message will be injected here -->
+        </div>
+        <a href="/" class="btn" style="margin-top:24px;">Generate Next Playlist</a>
+    </div>
+</body>
+</html>

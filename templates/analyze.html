@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groovii</title>
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='music_note.svg') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Describe your mood or music vibe</h2>
+        <form method="post" id="analyze-form">
+            <input class="analyze-input" type="text" name="description" placeholder="e.g. Chill, happy, rainy day..." required autofocus>
+            <button class="btn" type="submit">Generate Playlist</button>
+        </form>
+    </div>
+    <div id="loading-overlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(25,20,20,0.95);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">
+        <div style="color:#1db954;font-size:2em;font-weight:bold;margin-bottom:16px;">Generating your playlist...</div>
+        <div class="loader" style="border:6px solid #222;border-top:6px solid #1db954;border-radius:50%;width:48px;height:48px;animation:spin 1s linear infinite;"></div>
+    </div>
+    <script>
+    document.getElementById('analyze-form').addEventListener('submit', function() {
+        document.getElementById('loading-overlay').style.display = 'flex';
+    });
+    </script>
+    <style>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    </style>
+</body>
+</html>
