@@ -36,6 +36,11 @@ agno_agent = Agent(model=agno_model, markdown=True, debug_mode=True, show_tool_c
 @app.route('/')
 def index():
     session.clear()  # Clear session to ensure fresh login on each visit to index
+    # Remove Spotipy .cache file if it exists
+    import os
+    cache_path = os.path.join(os.path.dirname(__file__), '.cache')
+    if os.path.exists(cache_path):
+        os.remove(cache_path)
     return render_template('index.html', show_chat=True)
 
 @app.route('/login')
