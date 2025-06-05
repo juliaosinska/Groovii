@@ -36,12 +36,19 @@ agno_agent = Agent(model=agno_model, markdown=True, debug_mode=True, show_tool_c
 @app.route('/')
 def index():
     session.clear()  # Clear session to ensure fresh login on each visit to index
-    # Remove Spotipy .cache file if it exists
+    import os
+    cache_path = os.path.join(os.path.dirname(__file__), '.cache')
+    cache_exists = os.path.exists(cache_path)
+    return render_template('index.html', show_chat=True, cache_exists=cache_exists)
+
+@app.route('/switch_account')
+def switch_account():
+    session.clear()
     import os
     cache_path = os.path.join(os.path.dirname(__file__), '.cache')
     if os.path.exists(cache_path):
         os.remove(cache_path)
-    return render_template('index.html', show_chat=True)
+    return redirect(url_for('index', switched=1))
 
 @app.route('/login')
 def login():
@@ -78,10 +85,10 @@ def callback():
     state = request.args.get('state')
     if not state or state != session.get('oauth_state'):
         return 'Invalid state parameter. Please try logging in again.', 400
-    # Do NOT clear session here!
+    # If user cancels login, Spotify returns no code
     code = request.args.get('code')
     if not code:
-        return 'Authorization failed. No code returned from Spotify.', 400
+        return redirect(url_for('index'))
     token_info = sp_oauth.get_access_token(code, as_dict=True) if hasattr(sp_oauth, 'get_access_token') else sp_oauth.get_access_token(code)
     if not token_info or 'access_token' not in token_info:
         return 'Failed to get access token from Spotify.', 400
@@ -104,21 +111,26 @@ def analyze():
         scope=SCOPE,
         cache_path=None
     )
-    # Check if token is expired and refresh if needed
     if sp_oauth.is_token_expired(token_info):
         token_info = sp_oauth.refresh_access_token(token_info['refresh_token'])
         session['token_info'] = token_info
     sp = spotipy.Spotify(auth=token_info['access_token'])
-    # Accept description and mode from chat agent redirect
     description = request.args.get('description') or request.form.get('description')
     mode = request.args.get('mode', 'liked')
+    # Get number of songs from form, default to 20, clamp to 1-100
+    try:
+        num_songs = int(request.args.get('num_songs') or request.form.get('num_songs') or 20)
+        num_songs = max(1, min(num_songs, 100))
+    except Exception:
+        num_songs = 20
     if request.method == 'GET' and not description:
         return render_template('analyze.html')
-    # Fetch songs based on mode
+    # Fetch up to 200 liked songs for mood-matching, but only pass num_songs to agent if user has less
+    max_liked_to_fetch = max(num_songs, 200)
     songs = []
     if mode == 'search':
         # Use Spotify search to find new music matching the description
-        search_results = sp.search(q=description, type='track', limit=20)
+        search_results = sp.search(q=description, type='track', limit=num_songs)
         for t in search_results['tracks']['items']:
             songs.append({
                 'name': t['name'],
@@ -129,8 +141,8 @@ def analyze():
         # Default: use liked songs
         limit = 50
         offset = 0
-        while True:
-            results = sp.current_user_saved_tracks(limit=limit, offset=offset)
+        while len(songs) < max_liked_to_fetch:
+            results = sp.current_user_saved_tracks(limit=min(limit, max_liked_to_fetch - len(songs)), offset=offset)
             items = results['items']
             if not items:
                 break
@@ -141,9 +153,12 @@ def analyze():
                         'artist': t['track']['artists'][0]['name'],
                         'id': t['track']['id']
                     })
+                if len(songs) >= max_liked_to_fetch:
+                    break
             if len(items) < limit:
                 break
             offset += limit
+    # Do not slice songs here, as we never fetch more than num_songs
     song_ids = [s['id'] for s in songs if s['id']]
     # Instead of audio features, use available song metadata for AI analysis
     song_data = [
@@ -156,13 +171,15 @@ def analyze():
     print(f"Sample song_data: {song_data[:2]}")
     # Use Agno agent for song selection and playlist naming
     agno_response = None  # Ensure this is always defined
+    valid_song_ids = []
+    playlist_name = None
     if GEMINI_API_KEY or agno_agent:
         try:
             allowed_tracks = {s['id']: {'name': s['name'], 'artist': s['artist']} for s in songs}
             agno_prompt = (
                 "You are a music expert AI. "
                 "You are given a list of Spotify tracks as a JSON object mapping track IDs to song info. "
-                "ONLY select up to 20 track IDs from the provided list that best fit the user's mood or description. "
+                f"Select as many track IDs from the provided list that best fit the user's mood or description, up to {num_songs}. "
                 "Do NOT invent or guess any track IDs. "
                 "Return ONLY a JSON object with two fields: 'track_ids' (an array of selected Spotify track IDs, e.g. ['id1','id2'], all of which MUST be from the provided list) and 'playlist_name' (a short, witty, and fitting playlist name). "
                 "Do NOT include any explanations, commentary, or quotes. "
@@ -170,19 +187,15 @@ def analyze():
             )
             response = agno_agent.run(agno_prompt)
             print(response)
-            # Use .content for RunResponse, fallback to .output or str(response) if needed
             agno_response = response.content
-            print("Agent returned:", agno_response)
             if agno_response is None:
                 print("Agent returned None as response!")
                 return render_template('result.html', playlist_url=None, songs=[], error="Agent returned no response.", agent_response=agno_response)
             track_ids = []
-            playlist_name = None
             # Improved JSON extraction
             try:
                 import re
                 agno_response_clean = str(agno_response).strip()
-                # Extract JSON from markdown code block if present
                 codeblock_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', agno_response_clean, re.IGNORECASE)
                 if codeblock_match:
                     agno_response_clean = codeblock_match.group(1).strip()
@@ -209,30 +222,27 @@ def analyze():
             
         except Exception as e:
             print(f"Error in agent processing: {str(e)}")
-            valid_song_ids = [s['id'] for s in songs[:5]]
+            valid_song_ids = [s['id'] for s in songs[:min(5, len(songs))]]
             playlist_name = None
     else:
-        valid_song_ids = [s['id'] for s in songs[:5]]
+        valid_song_ids = [s['id'] for s in songs[:min(5, len(songs))]]
         playlist_name = None
         agno_response = None
-    
-    if not valid_song_ids:
-        return render_template('result.html', playlist_url=None, songs=[], error="No valid tracks selected by the agent. Please try again or check your liked songs.", agent_response=agno_response)
-    
-    # Use agent's playlist name, fallback to description if missing
-    if not playlist_name or not playlist_name.strip():
-        playlist_name = description[:80] if description else "AI Playlist"
-        
-    user_id = session.get('user_id')
-    playlist = sp.user_playlist_create(user_id, playlist_name, public=True)
-    sp.user_playlist_add_tracks(user_id, playlist['id'], valid_song_ids)
 
-    # If user has less than 100 liked tracks, get recommendations from agent
-    if len(songs) < 100:
-        # Ask the agent for recommended tracks (by name and artist)
+    # Supplement with recommendations if not enough mood-matching liked songs
+    max_rec_attempts = 1  # Only ask once
+    rec_attempts = 0
+    used_tracks = set()
+    for tid in valid_song_ids:
+        for s in songs:
+            if s['id'] == tid:
+                used_tracks.add((s['name'].lower(), s['artist'].lower()))
+    while len(valid_song_ids) < num_songs and rec_attempts < max_rec_attempts:
+        num_recs_needed = num_songs - len(valid_song_ids)
         rec_prompt = (
-            "Suggest 10 additional Spotify tracks (not in the user's liked songs) that fit this mood: '"
-            f"{description}' as a JSON array of objects with 'name' and 'artist'. Do not include any explanations."
+            f"Suggest exactly {num_recs_needed} additional Spotify tracks (not in the user's liked songs or these already used: {list(used_tracks)}) "
+            f"that fit this mood: '{description}'. Return only a JSON array of objects, each with 'name' and 'artist'. "
+            "Do not include explanations or any other text."
         )
         rec_response = agno_agent.run(rec_prompt)
         import re
@@ -252,10 +262,12 @@ def analyze():
         except Exception as e:
             print(f"Error parsing recommendations: {e}\nRaw: {rec_response}")
             rec_json = []
-        # Search Spotify for each recommended track and add the first match
         recommended_ids = []
         for rec in rec_json:
             try:
+                name_artist = (rec['name'].lower(), rec['artist'].lower())
+                if name_artist in used_tracks:
+                    continue
                 q = f"track:{rec['name']} artist:{rec['artist']}"
                 search = sp.search(q=q, type='track', limit=1)
                 items = search['tracks']['items']
@@ -263,13 +275,29 @@ def analyze():
                     rec_id = items[0]['id']
                     if rec_id not in valid_song_ids and rec_id not in recommended_ids:
                         recommended_ids.append(rec_id)
+                used_tracks.add(name_artist)
             except Exception as e:
                 print(f"Error adding recommended track: {e}")
+                used_tracks.add(name_artist)
         if recommended_ids:
-            sp.user_playlist_add_tracks(user_id, playlist['id'], recommended_ids)
+            recommended_ids = recommended_ids[:num_recs_needed]
             valid_song_ids.extend(recommended_ids)
+        rec_attempts += 1
+
+    # Use agent's playlist name, fallback to description if missing
+    if not playlist_name or not playlist_name.strip():
+        playlist_name = description[:80] if description else "AI Playlist"
+    user_id = session.get('user_id')
+    playlist = sp.user_playlist_create(user_id, playlist_name, public=True)
+    sp.user_playlist_add_tracks(user_id, playlist['id'], valid_song_ids)
+
+    # If still not enough, show a warning message
+    warning_msg = None
+    if len(valid_song_ids) < num_songs:
+        warning_msg = f"Only {len(valid_song_ids)} out of {num_songs} requested songs could be found and added. Try lowering the number or broadening your mood description."
+
     time.sleep(5)  # Wait for Spotify to update the playlist contents
-    return render_template('result.html', playlist_url=playlist['external_urls']['spotify'], songs=valid_song_ids, playlist_id=playlist['id'], playlist_name=playlist_name, agent_response=agno_response)
+    return render_template('result.html', playlist_url=playlist['external_urls']['spotify'], songs=valid_song_ids, playlist_id=playlist['id'], playlist_name=playlist_name, agent_response=agno_response, warning_msg=warning_msg)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=1234)

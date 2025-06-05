@@ -9,22 +9,44 @@
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='music_note.svg') }}">
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="analyze-container">
         <h2>Describe your mood or music vibe</h2>
-        <form method="post" id="analyze-form">
-            <input class="analyze-input" type="text" name="description" placeholder="e.g. Chill, happy, rainy day..." required autofocus>
-            <button class="btn" type="submit">Generate Playlist</button>
+        <form method="post" action="/analyze" class="mood-form" id="analyze-form" style="display:flex;flex-direction:column;align-items:center;gap:18px;max-width:400px;margin:0 auto;">
+            <input type="text" name="description" placeholder="Describe your mood..." required class="analyze-input">
+            <label for="num_songs" style="font-size:1rem;color:#fff;margin-bottom:6px;display:block;margin-top:0;">How many songs do you want in your playlist?</label>
+            <div style="width:100%;margin-top:0;text-align:center;">
+                <input type="range" name="num_songs" id="num_songs" min="1" max="100" value="20" style="width:100%;accent-color:#1db954;">
+                <span id="num_songs_value" style="font-weight:bold;color:#fff;margin-left:10px;">20</span>
+            </div>
+            <button type="submit" class="btn" style="margin-top:10px;width:100%;">Generate Playlist</button>
         </form>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var slider = document.getElementById('num_songs');
+            var valueDisplay = document.getElementById('num_songs_value');
+            if (slider && valueDisplay) {
+                valueDisplay.textContent = slider.value;
+                slider.addEventListener('input', function() {
+                    valueDisplay.textContent = slider.value;
+                });
+            }
+            // Listen for warning message from result page via sessionStorage
+            if (sessionStorage.getItem('playlistWarning')) {
+                document.getElementById('analyze-container').style.maxWidth = '600px';
+                document.getElementById('analyze-form').style.maxWidth = '600px';
+                sessionStorage.removeItem('playlistWarning');
+            }
+        });
+        // Show loading overlay on form submit
+        document.getElementById('analyze-form').addEventListener('submit', function() {
+            document.getElementById('loading-overlay').style.display = 'flex';
+        });
+        </script>
     </div>
     <div id="loading-overlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(25,20,20,0.95);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">
         <div style="color:#1db954;font-size:2em;font-weight:bold;margin-bottom:16px;">Generating your playlist...</div>
         <div class="loader" style="border:6px solid #222;border-top:6px solid #1db954;border-radius:50%;width:48px;height:48px;animation:spin 1s linear infinite;"></div>
     </div>
-    <script>
-    document.getElementById('analyze-form').addEventListener('submit', function() {
-        document.getElementById('loading-overlay').style.display = 'flex';
-    });
-    </script>
     <style>
     @keyframes spin {
       0% { transform: rotate(0deg); }

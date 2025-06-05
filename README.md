@@ -1,15 +1,15 @@
 # Groovii: AI Spotify Playlist Generator
 
-This Flask app lets users log in with Spotify, describe their mood, and uses Gemini AI to generate a personalized playlist from their liked songs.
+This Flask app lets users log in with Spotify, describe their mood, and uses Gemini AI Agent to generate a personalized playlist from their liked songs.
 
 ## Features
-- Spotify OAuth login (with session clearing and state validation)
+- Spotify OAuth login (always fresh, session cleared on each visit to home page)
 - User mood/description input
 - Fetches user's liked songs from Spotify
 - Uses Gemini AI (via Agno agent) to analyze and match songs
 - Creates a playlist in the user's Spotify account
 - Modern, unified UI (all styles in `static/style.css`)
-- No chat or chat UI
+- Handles Spotify account switching correctly with a dedicated button
 
 ## Setup
 1. Install dependencies:
@@ -30,13 +30,15 @@ This Flask app lets users log in with Spotify, describe their mood, and uses Gem
    ```
 
 ## Endpoints
-- `/` - Home page (login/start)
-- `/login` - Spotify OAuth login (clears session, always fresh)
+- `/` - Home page (clears session for fresh login)
+- `/login` - Spotify OAuth login
 - `/callback` - Spotify OAuth callback (validates state)
 - `/analyze` - Submit mood/description and get playlist
 - `/logout` - Log out of the app (clears session)
+- `/switch_account` - Clears session and deletes `.cache` to allow switching Spotify accounts
 
 ## Notes
-- To switch Spotify accounts, log out of Spotify in your browser before logging in again.
-- All UI is modernized and unified; all chat features have been removed.
+- To switch Spotify accounts, click the "Switch Spotify Account" button on the home page. This will clear the session and delete the `.cache` file, ensuring the next login uses the correct account.
+- All UI is modernized and unified.
 - The app uses best practices for API security and user authentication.
+- Do **not** commit your `.env` file or any secrets to git (see `.gitignore`).
