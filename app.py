@@ -179,7 +179,8 @@ def analyze():
             agno_prompt = (
                 "You are a music expert AI. "
                 "You are given a list of Spotify tracks as a JSON object mapping track IDs to song info. "
-                f"Select as many track IDs from the provided list that best fit the user's mood or description, up to {num_songs}. "
+                f"For each track, search for its lyrics on https://genius.com/ or another lyrics website. "
+                f"Based on the lyrics, select as many track IDs from the provided list that best fit the user's mood or description, up to {num_songs}. "
                 "Do NOT invent or guess any track IDs. "
                 "Return ONLY a JSON object with two fields: 'track_ids' (an array of selected Spotify track IDs, e.g. ['id1','id2'], all of which MUST be from the provided list) and 'playlist_name' (a short, witty, and fitting playlist name). "
                 "Do NOT include any explanations, commentary, or quotes. "
@@ -240,9 +241,9 @@ def analyze():
     while len(valid_song_ids) < num_songs and rec_attempts < max_rec_attempts:
         num_recs_needed = num_songs - len(valid_song_ids)
         rec_prompt = (
-            f"Suggest exactly {num_recs_needed} additional Spotify tracks (not in the user's liked songs or these already used: {list(used_tracks)}) "
-            f"that fit this mood: '{description}'. Return only a JSON array of objects, each with 'name' and 'artist'. "
-            "Do not include explanations or any other text."
+            f"Search the web for exactly {num_recs_needed} additional real Spotify tracks (not in the user's liked songs or these already used: {list(used_tracks)}) "
+            f"that best fit this mood: '{description}'. Only suggest tracks that actually exist on Spotify. "
+            "Return only a JSON array of objects, each with 'name' and 'artist'. Do not include explanations or any other text."
         )
         rec_response = agno_agent.run(rec_prompt)
         import re
@@ -289,7 +290,9 @@ def analyze():
         playlist_name = description[:80] if description else "AI Playlist"
     user_id = session.get('user_id')
     playlist = sp.user_playlist_create(user_id, playlist_name, public=True)
-    sp.user_playlist_add_tracks(user_id, playlist['id'], valid_song_ids)
+    # Add tracks in batches of 100 (Spotify API limit)
+    for i in range(0, len(valid_song_ids), 100):
+        sp.user_playlist_add_tracks(user_id, playlist['id'], valid_song_ids[i:i+100])
 
     # If still not enough, show a warning message
     warning_msg = None
