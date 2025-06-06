@@ -1,12 +1,13 @@
 # Groovii: AI Spotify Playlist Generator
 
-This Flask app lets users log in with Spotify, describe their mood, and uses Gemini AI Agent to generate a personalized playlist from their liked songs.
+This Flask app lets users log in with Spotify, describe their mood, and uses Gemini AI Agents to generate a personalized playlist from their liked songs. The app analyzes lyrics and supplements with AI recommendations if needed.
 
 ## Features
 - Spotify OAuth login (always fresh, session cleared on each visit to home page)
 - User mood/description input
 - Fetches user's liked songs from Spotify
-- Uses Gemini AI (via Agno agent) to analyze and match songs
+- Uses Gemini AI (via Agno agent) to analyze and match songs based on lyrics (using Genius.com or similar)
+- If not enough mood-matching liked songs, a second AI agent recommends additional real Spotify tracks, explicitly excluding already used tracks
 - Creates a playlist in the user's Spotify account
 - Modern, unified UI (all styles in `static/style.css`)
 - Handles Spotify account switching correctly with a dedicated button
@@ -39,6 +40,8 @@ This Flask app lets users log in with Spotify, describe their mood, and uses Gem
 
 ## Notes
 - To switch Spotify accounts, click the "Switch Spotify Account" button on the home page. This will clear the session and delete the `.cache` file, ensuring the next login uses the correct account.
+- The AI agent analyzes lyrics for each liked song using Genius.com or similar, and only selects tracks that fit the user's mood/description.
+- If not enough tracks are found, the agent recommends additional real Spotify tracks, always excluding those already used.
 - All UI is modernized and unified.
 - The app uses best practices for API security and user authentication.
 - Do **not** commit your `.env` file or any secrets to git (see `.gitignore`).
