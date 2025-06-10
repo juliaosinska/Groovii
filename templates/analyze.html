@@ -12,7 +12,7 @@
     <div class="container" id="analyze-container">
         <h2>Describe your mood or music vibe</h2>
         <form method="post" action="/analyze" class="mood-form" id="analyze-form" style="display:flex;flex-direction:column;align-items:center;gap:18px;max-width:400px;margin:0 auto;">
-            <input type="text" name="description" placeholder="Describe your mood..." required class="analyze-input">
+            <textarea name="description" placeholder="Describe your mood..." required class="analyze-input" rows="3" style="resize:vertical;width:100%;min-height:60px;"></textarea>
             <label for="num_songs" style="font-size:1rem;color:#fff;margin-bottom:6px;display:block;margin-top:0;">How many songs do you want in your playlist?</label>
             <div style="width:100%;margin-top:0;text-align:center;">
                 <input type="range" name="num_songs" id="num_songs" min="1" max="100" value="20" style="width:100%;accent-color:#1db954;">

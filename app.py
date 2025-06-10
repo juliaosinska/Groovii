@@ -182,7 +182,8 @@ def analyze():
                 f"For each track, search for its lyrics on https://genius.com/ or another lyrics website. "
                 f"Based on the lyrics, select as many track IDs from the provided list that best fit the user's mood or description, up to {num_songs}. "
                 "Do NOT invent or guess any track IDs. "
-                "Return ONLY a JSON object with two fields: 'track_ids' (an array of selected Spotify track IDs, e.g. ['id1','id2'], all of which MUST be from the provided list) and 'playlist_name' (a short, witty, and fitting playlist name). "
+                "Return ONLY a JSON object with two fields: 'track_ids' (an array of selected Spotify track IDs, e.g. ['id1','id2'], all of which MUST be from the provided list) and 'playlist_name'. "
+                "For 'playlist_name', create a unique, witty, and highly creative playlist name that fits the user's mood/description. Avoid generic or repetitive names, and do not reuse names from previous responses. Make it fun, poetic, or surprising if possible. "
                 "Do NOT include any explanations, commentary, or quotes. "
                 f"\nUser's mood/description: {description}\nAllowed tracks: {json.dumps(allowed_tracks)}"
             )
