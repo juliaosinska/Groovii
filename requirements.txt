@@ -1,5 +1,5 @@
 Flask
 requests
-dotenv
 spotipy
 google-generativeai
+python-dotenv
