@@ -2,7 +2,7 @@
 
 > **Projekt uczelniany – stworzony w ramach zaliczenia zajęć**
 
-Jest to symulacja produktu stworzonego przez pracownika Spotify w ramach działań marketingowych. Produkt zostałby udostępniony użytkownikom premium, aby zobrazować chęć podążania za trednami związanymi z użyciem AI. 
+Jest to symulacja produktu stworzonego przez pracownika Spotify w ramach działań marketingowych. Produkt zostałby udostępniony użytkownikom premium, aby zobrazować chęć podążania za trendami związanymi z użyciem AI. 
 
 Ta aplikacja Flask pozwala użytkownikom zalogować się przez Spotify, opisać swój nastrój, a następnie wykorzystuje Gemini AI Agents do wygenerowania spersonalizowanej playlisty z polubionych utworów. Aplikacja analizuje teksty piosenek i w razie potrzeby uzupełnia playlistę rekomendacjami AI.
 
